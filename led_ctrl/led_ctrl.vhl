@@ -1,0 +1,46 @@
+type BrightnessValue = autonum<0.00, 0.01 ..= 1.00>;
+type EasingType = enum {
+	Quadratic,
+	Qubic,
+};
+
+/main {
+	/channel_count<const indexof(#./channel)> {}
+
+	/channel<[Cell<_>; max 12]> {
+		/raw_brightness<BrightnessValue> {
+			default: 0.0;
+		}
+
+		/gamma_brightness<alias<BrightnessValue, _>> {
+			bound: #../raw_brightness = pow(self, #./gamma); // auto deduct reverse equation or introduce `bound_reverse`??
+
+			/gamma<autonum<0.01 ..= 10.0>> {}
+		}
+
+		/smooth<u16 [ms]> {
+			default: 0;
+
+			/curve<EasingType> {}
+		}
+	}
+
+	/rgbw_group<[_; max 4]> {
+		description: "Combine several channels into one RGB or RGBW virtual channel. Borrows channels when enabled.";
+		/enabled<bool> {}
+		/channels<[indexof(#../channel); 3..=4]> {}
+		/as_rgb<Rgb> {}
+		/as_hsv<Hsv> {}
+	}
+
+	/white_group<[_; max 4]> {
+		description: "Combine several channels connected to white LEDs with different color temperatures.";
+		/enabled<bool> {}
+		/channels<[(indexof(#../channel), u16 [K]); 2..=4]> {}
+		/value<BrightnessValue> {}
+		/temperature<u16 [K]> {}
+	}
+
+	/all_off<fn()> {}
+	/all_prev<fn()> {}
+}
