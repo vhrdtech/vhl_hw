@@ -1,0 +1,19 @@
+enum RawCanId {
+    Std(u11),
+    Ext(u29),
+}
+
+struct RawFrame {
+    id: RawCanId,
+    data: [u8; max 64],
+}
+
+rs rt_bridge_pro {
+	rs capabilities<(), #0> {
+		rs channel_count<const u8, #0> {}
+	}
+
+	rs canbus<[Self; max 2], #1> {
+		rs rx<ro+stream RawFrame, #0> {}
+	}
+}
