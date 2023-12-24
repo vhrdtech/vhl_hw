@@ -1,46 +1,52 @@
-type BrightnessValue = autonum<0.00, 0.01 ..= 1.00>;
-type EasingType = enum {
+type BrightnessValue = autonum<0.000, 0.001 ..= 1.000>; // uq<1,10> 0 .. 1.9990234375
+enum EasingType {
+    Linear,
 	Quadratic,
 	Qubic,
-};
+}
 
-/main {
-	/channel_count<const indexof(#./channel)> {}
-
-	/channel<[Cell<_>; max 12]> {
-		/raw_brightness<BrightnessValue> {
+rs main {
+	rs channel<[Cell<Self>; 12], #0> {
+	    /// Control PWM duty cycle directly
+	    #[path]
+		rs raw_brightness<rw+stream BrightnessValue, #0> {
 			default: 0.0;
+			examples: [0.0, 0.25, 0.5, 0.75, 1.0];
 		}
 
-		/gamma_brightness<alias<BrightnessValue, _>> {
-			bound: #../raw_brightness = pow(self, #./gamma); // auto deduct reverse equation or introduce `bound_reverse`??
-
-			/gamma<autonum<0.01 ..= 10.0>> {}
+		rs gamma_brightness<rw+stream BrightnessValue, #1> {
+            /// Gamma coefficient used to correct brighntess values
+			rs gamma<autonum<0.0, 0.01 ..= 10.0>, #0> {}
 		}
 
-		/smooth<u16 [ms]> {
+		rs smooth<rw u16 `ms`, #2> {
 			default: 0;
 
-			/curve<EasingType> {}
+			rs curve<rw EasingType, #0> {}
 		}
 	}
 
-	/rgbw_group<[_; max 4]> {
+	rs rgbw_group<[Self; max 4], #1> {
 		description: "Combine several channels into one RGB or RGBW virtual channel. Borrows channels when enabled.";
-		/enabled<bool> {}
-		/channels<[indexof(#../channel); 3..=4]> {}
-		/as_rgb<Rgb> {}
-		/as_hsv<Hsv> {}
+		rs enabled<rw bool, #0> {}
+		rs channels<rw [indexof<super::channel>; 3..=4], #1> {}
+		rs as_rgb<rw+stream Rgb, #2> {}
+		rs as_hsv<rw+stream Hsv, #3> {}
 	}
 
-	/white_group<[_; max 4]> {
+	rs white_group<[Self; max 4], #2> {
 		description: "Combine several channels connected to white LEDs with different color temperatures.";
-		/enabled<bool> {}
-		/channels<[(indexof(#../channel), u16 [K]); 2..=4]> {}
-		/value<BrightnessValue> {}
-		/temperature<u16 [K]> {}
+		rs enabled<rw bool, #0> {}
+		rs channels<rw [ (indexof<super::channel>, u16 `K`) ; 2..=4], #1> {}
+		rs value<rw+stream BrightnessValue, #2> {}
+		rs temperature<rw+stream u16 `K`, #3> {}
 	}
 
-	/all_off<fn()> {}
-	/all_prev<fn()> {}
+	rs all_off<fn(), #3> {}
+	rs all_prev<fn(), #4> {}
+
+    impl log::defmt;
+    impl ota::bootloader_entrypoint;
+    impl canbus::counters;
+    impl vhcan::counters;
 }

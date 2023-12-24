@@ -1,24 +1,24 @@
 struct HwInfo {
-	name: String,
-	variant: String,
+	name: str,
+	variant: str,
 	revision: SemVer,
-	serial: String,
+	serial: str,
 }
 
 struct FwInfo {
 	version: SemVer,
-	variant: String,
-	vcs_sha: String,
+	variant: str,
+	vcs_sha: str,
 }
 
 struct ExtensionsInfo {
 	bus_power_present: bool, // not possible to figure out in hw
-	2nd_ch_present: bool, // resistor
-	2nd_ch_version: String,
+	ch2_present: bool, // resistor
+	ch2_version: str,
 	pd_present: bool, // read through i2c/usart
-	pd_version: String,
+	pd_version: str,
 	poe_present: bool, // read through i2c/usart
-	poe_version: String,
+	poe_version: str,
 }
 
 enum Driver {
@@ -26,7 +26,7 @@ enum Driver {
 	Socketcan
 }
 
-struct RateCounter<T: WholeNumber[U]> {
+/*struct RateCounter<T: WholeNumber[U]> {
 	current: T,
 	rate: u32[unit_of(T)/s]
 }
@@ -34,20 +34,20 @@ struct RateCounter<T: WholeNumber[U]> {
 struct Counters<T: WholeNumber[U]> {
 	in: RateCounter<T>,
 	out: RateCounter<T>
-}
+}*/
 
 enum IpAddr {
 	Ipv4(Ipv4Addr),
 	Ipv6(Ipv6Addr)
 }
 
-/// Info about which port on the device is used
+// Info about which port on the device is used
 enum UsbPortInfo {
-	/// Normally PD port, always connected to H7
+	// Normally PD port, always connected to H7
 	FsPdH7, 
-	/// If F7 USB-SPI bridge is present, second USB is connected to it
+	// If F7 USB-SPI bridge is present, second USB is connected to it
 	HsF7, 
-	/// If F7 is absent, second USB is connected to H7 as well
+	// If F7 is absent, second USB is connected to H7 as well
 	FsH7, 
 }
 
@@ -66,7 +66,7 @@ struct ClientInfo {
 	sw_sha: String,
 }
 
-/// Which protocol is expected on the bus to perform higher level decoding and analysis
+// Which protocol is expected on the bus to perform higher level decoding and analysis
 enum CanProtocol {
 	Raw,
 	UavCan,
@@ -75,66 +75,11 @@ enum CanProtocol {
 	J1939,
 }
 
-/// Redundand bus configuration
+// Redundand bus configuration
 enum PortAggregation {
 	Disabled,
 	FrameBased2 { port_2: u8 },
 	FrameBased3 { port_2: u8, port_3: u8 }
-}
-
-struct CtrlConfig {
-	can_core_freq: u32[Hz],
-	standard: CtrlStandard,
-	mode: CtrlMode,
-	transmit_pause: bool,
-	automatic_retransmission: bool,
-}
-
-enum CtrlStandard {
-	Classical(CtrlNominalBitTiming),
-	FD(CtrlFDConfig),
-	// XL(NominalBitTiming, DataBitTiming)
-}
-
-struct CtrlNominalBitTiming {
-    sjw: u8,
-    brp: u16,
-    tseg1: u8,
-    tseg2: u8
-}
-
-struct CtrlDataBitTiming {
-    sjw: u8,
-    brp: u8,
-    tseg1: u8,
-    tseg2: u8
-}
-
-struct CtrlFDConfig {
-	nbt: CtrlNominalBitTiming,
-	dbt: CtrlDataBitTiming,
-	non_iso: bool,
-}
-
-enum CtrlMode {
-	/// Fully disable CAN controller, counters and protocol analysis.
-	Disabled,
-	/// Normal operation mode
-    Normal,
-    /// Intended for applications that adapt themselves to different CAN bitrates.
-    /// Frames can be sent and received, acknowledges are given to valid received frames.
-    /// No error or overload frames are sent.
-    /// Entered manually in initialization, when tx handler was not able to read message RAM in time
-    /// or when clock calibration is in progress.
-    /// Can be exited at any time.
-    Restricted,
-    /// Only recessive bits are sent on the bus. Frames can only be received.
-    /// Can be used to analyze traffic on the bus without affecting it in any way.
-    /// Entered manually in initialization or on error level S3 (TTOST.EL=11)
-    /// Can be exited at any time.
-    BusMonitoring,
-	ExternalLoopback,
-	InternalLoopback,
 }
 
 struct CtrlErrorCounters {
@@ -147,14 +92,14 @@ enum FilterType {
 	Extended(IdFilter<ExtendedId>)
 }
 
-enum IdFilter<T> {
+/*enum IdFilter<T> {
 	Mask {
 		mask: T,
 		value: T
 	},
 	Match(T),
 	Range(T, T)
-}
+}*/
 
 enum Message {
 	CanFrame { id: CanId, rtr: bool, data: [u8; max 8] },
@@ -163,128 +108,130 @@ enum Message {
 	//VhCanMessage(),
 }
 
-/ {
-	/info {
-		/hardware<HwInfo> { description: "Get information about the hardware"; }
-		/firmware<FwInfo> { description: "Get information about the firmware"; }
-		/extensions<ExtensionsInfo> { description: "Get information about installed extensions (2nd channel, bus_power, pd, poe)" }
-		/alias<String> { rw: true; description: "User settable device alias" }
-		/location<String> { rw: true; description: "User settable device location" }
+rs main {
+	rs info {
+		rs hardware<HwInfo, #0> { description: "Get information about the hardware"; }
+		rs firmware<FwInfo> { description: "Get information about the firmware"; }
+		rs extensions<ExtensionsInfo> { description: "Get information about installed extensions (2nd channel, bus_power, pd, poe)"; }
+		rs alias<rw str> { description: "User settable device alias"; }
+		rs location<rw str> { description: "User settable device location"; }
 	}
 
-/*	/clients<[ClientInfo; max 8]> {
+/*	rs clients<[ClientInfo; max 8]> {
 		description: "List of clients currently connected",
 		observe_rate: max 10[Hz];
 
-		/disconnect<fn(i: Interface)> {
+		rs disconnect<fn(i: Interface)> {
 			description: "Disconnect a client, probably dangerous function."
 		}
 	}
 	// if resources can be indexed, syntax might be cleaner:
-	/client<[_; max 8]> { // 0..8 or 'a'..'h'
-		/info<ClientInfo> {}
-		/byte_counters<ByteCounters> {}
-		/frame_counters<FrameCounters> {}
-		/disconnect<fn()> {}
+	rs client<[_; max 8]> { // 0..8 or 'a'..'h'
+		rs info<ClientInfo> {}
+		rs byte_counters<ByteCounters> {}
+		rs frame_counters<FrameCounters> {}
+		rs disconnect<fn()> {}
 	}
 
-	/can_ctrl_config<[CtrlConfig; max 4]> {
+	rs can_ctrl_config<[CtrlConfig; max 4]> {
 		rw: true;
 		description: "Configuration for each physical CAN controller"
 	}*/
 
-	/bus<[_; max 4]> {
-		/controller_config<mut CtrlConfig> { description: "Configuration of the physical CAN controller (b" }
-		/protocol<mut CanProtocol> { description: "Which protocol is used (Raw, UavCan, VhCan, CanOpen, J1939)" }
-		/aggregate<mut PortAggregation> { description: "Aggregate this port with others for redundant setups" }
+	rs bus<[_; max 4]> {
+		rs controller_config<rw CtrlConfig> { description: "Configuration of the physical CAN controller (b"; }
+		rs protocol<rw CanProtocol> { description: "Which protocol is used (Raw, UavCan, VhCan, CanOpen, J1939)"; }
+		rs aggregate<rw PortAggregation> { description: "Aggregate this port with others for redundant setups"; }
 		
-		/counters {
-			/ll_bytes<Counters<u64 [Byte]>> { description: "Total bytes counters for the physical interface" }
-			/frames<Counters<u64 [Frame]>> { description: "Total frame counters for the physical interface" }
-			/ctrl_errors<CtrlErrorCounters> { description: "CAN controller hardware counters" }
-			/zero<fn()> {}
+		rs counters {
+			rs ll_bytes<Counters<u64 `Byte`>> { description: "Total bytes counters for the physical interface"; }
+			rs frames<Counters<u64 `Frame`>> { description: "Total frame counters for the physical interface"; }
+			rs ctrl_errors<CtrlErrorCounters> { description: "CAN controller hardware counters"; }
+			rs zero<fn()> {}
 		}
 
-		/tx_flow<[_; max 8]> {
-			/to_bus<RwLock<stream_in<Message>>> {
+		rs tx_flow<[_; max 8]> {
+			rs to_bus<Cell<stream_in<Message>>> {
 				description: "Stream of messages to be transmitted on the bus, needs to be borrowed first by exactly one client.";
 			}
 
-			/info<ClientInfo> { description: "Information about the current user of this flow" }
+			rs info<ClientInfo> { description: "Information about the current user of this flow"; }
 
-			/counters {
-				/ll_bytes<RateCounter<u64 [Byte]>> { description: "Trasnmitted low level bytes" }
-				/frames<RateCounter<u64 [Frame]>> { description: "Trasnmitted CAN frames" }
-				/hp_bytes<RateCounter<u64 [Byte]>> { description: "Transmitted bytes of the higher level protocol" }
-				/messages<RateCounter<u64 [Message]>> { description: "Transmitted messages of the higher level protocol" }
-				/zero<fn()> {}
+			rs counters {
+				rs ll_bytes<RateCounter<u64 `Byte`>> { description: "Trasnmitted low level bytes"; }
+				rs frames<RateCounter<u64 `Frame`>> { description: "Trasnmitted CAN frames"; }
+				rs hp_bytes<RateCounter<u64 `Byte`>> { description: "Transmitted bytes of the higher level protocol"; }
+				rs messages<RateCounter<u64 `Message`>> { description: "Transmitted messages of the higher level protocol"; }
+				rs zero<fn()> {}
 			}
 		}
 
-		/rx_flow<[_; max 8]> {
-			/from_bus<stream_out<>> { description: "Stream of messages received from the bus" }
-			/from_others<stream_out<>> { description: "Stream of messages transmitted to the bus by other users on different flows" }
+		rs rx_flow<[_; max 8]> {
+			rs from_bus<ro+stream u8> { description: "Stream of messages received from the bus"; }
+			rs from_others<ro+stream u8> { description: "Stream of messages transmitted to the bus by other users on different flows"; }
 
-			/filters<mut [FilterType; max 32]> {}
+			rs filters<rw [FilterType; max 32]> {}
 
-			/counters {
-				/ll_bytes<RateCounter<u64 [Byte]>> { description: "Received low level bytes" }
-				/frames<RateCounter<u64 [Frame]>> { description: "Received CAN frames" }
-				/hp_bytes<RateCounter<u64 [Byte]>> { description: "Received bytes of the higher level protocol" }
-				/messages<RateCounter<u64 [Message]>> { description: "Received messages of the higher level protocol" }
-				/zero<fn()> {}
+			rs counters {
+				rs ll_bytes<RateCounter<u64 `Byte`>> { description: "Received low level bytes"; }
+				rs frames<RateCounter<u64 `Frame`>> { description: "Received CAN frames"; }
+				rs hp_bytes<RateCounter<u64 `Byte`>> { description: "Received bytes of the higher level protocol"; }
+				rs messages<RateCounter<u64 `Message`>> { description: "Received messages of the higher level protocol"; }
+				rs zero<fn()> {}
 			}
 		}
 	}
 
-	/bootloader {
-		/self {
-			/enter<fn()> {}
+	rs bootloader {
+		rs self {
+			rs enter<fn()> {}
 		}
 		
-		/f7 {
-			/enter<fn()> {}
-			/firmware<mut chunks<512>> {}
-			/firmware_info {}
-			/boot<fn()> {}
+		rs mcu_f7 {
+			rs enter<fn()> {}
+			rs firmware<rw chunks<512>> {}
+			rs firmware_info {}
+			rs boot<fn()> {}
 		}
 	}
 
-	/wasm {
-		/slot<[_; max 8]> {
-			/vhl<chunks> {}
-			/bytecode<chunks> {}
-			/info {}
-			/status {}
-			/run<fn()> {}
-			/autostart<bool> { rw: true; }
-			/stop<fn()> {}
+	rs wasm {
+		rs slot<[_; max 8]> {
+			rs vhl<chunks> {}
+			rs bytecode<chunks> {}
+			rs info {}
+			rs status {}
+			rs run<fn()> {}
+			rs autostart<rw bool> { }
+			rs stop<fn()> {}
 		}
 	}
 
-	/wireguard {
-		/private_key<> {}
-		/public_key<> {}
-		/ip<Ipv4Addr> {}
-		/peers<[_; max 4] {
-			/ip<>{}
-			/public_key<>{}
+	rs wireguard {
+		rs private_key<> {}
+		rs public_key<> {}
+		rs ip<Ipv4Addr> {}
+		rs peers<[Self; max 4]> {
+			rs ip<>{}
+			rs public_key<>{}
 		}
-		/status {}
-		/counters {
-			/bytes<Counters<u64[Byte]>>{}
-			/packets<Counters<u64[Packet]>>{}
+		rs status {}
+		rs counters {
+			rs bytes<Counters<u64 `Byte`>>{}
+			rs packets<Counters<u64 `Packet`>>{}
 		}
 	}
+
+	impl test;
 }
 
 /*
 fn byte_and_frame_counters(byte_description: String, frame_description: String) -> xpi_block {
 	quote!(
-		/ll_byte_counters<Counters<u64 [Byte]>> { description: #byte_description }
-		/frame_counters<Counters<u64 [Frame]>> { description: #frame_description }
-		/byte_counters()
-		/zero<fn()> {}
+		rs ll_byte_counters<Counters<u64 [Byte]>> { description: #byte_description }
+		rs frame_counters<Counters<u64 [Frame]>> { description: #frame_description }
+		rs byte_counters()
+		rs zero<fn()> {}
 	)
 }*/
 
